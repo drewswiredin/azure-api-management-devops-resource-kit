@@ -22,10 +22,12 @@ namespace Microsoft.Azure.Management.ApiManagement.ArmTemplates.Test
 
             // act
             Template propertyTemplate = propertyTemplateCreator.CreatePropertyTemplate(creatorConfig);
+            Dictionary<string, TemplateParameterProperties> propertyTemplateParameters = (Dictionary<string, TemplateParameterProperties>)propertyTemplate.parameters;
             PropertyTemplateResource propertyTemplateResource = (PropertyTemplateResource)propertyTemplate.resources[0];
 
             // assert
             Assert.Equal($"[concat(parameters('ApimServiceName'), '/{property.displayName}')]", propertyTemplateResource.name);
+            Assert.Equal(true, propertyTemplateParameters.ContainsKey(property.displayName));
             Assert.Equal(property.displayName, propertyTemplateResource.properties.displayName);
             Assert.Equal(property.value, propertyTemplateResource.properties.value);
         }

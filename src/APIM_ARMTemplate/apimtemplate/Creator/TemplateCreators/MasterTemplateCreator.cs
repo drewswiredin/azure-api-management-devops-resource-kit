@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using Microsoft.Azure.Management.ApiManagement.ArmTemplates.Common;
 using System.Threading.Tasks;
+using System.ComponentModel;
+using System.Linq;
 
 namespace Microsoft.Azure.Management.ApiManagement.ArmTemplates.Create
 {
@@ -33,55 +35,55 @@ namespace Microsoft.Azure.Management.ApiManagement.ArmTemplates.Create
             if (globalServicePolicyTemplate != null)
             {
                 string globalServicePolicyUri = GenerateLinkedTemplateUri(creatorConfig, fileNames.globalServicePolicy);
-                resources.Add(this.CreateLinkedMasterTemplateResource("globalServicePolicyTemplate", globalServicePolicyUri, new string[] { }));
+                resources.Add(this.CreateLinkedMasterTemplateResource("globalServicePolicyTemplate", globalServicePolicyUri, new string[] { }, new string[] { }));
             }
 
             // apiVersionSet
             if (apiVersionSetTemplate != null)
             {
                 string apiVersionSetUri = GenerateLinkedTemplateUri(creatorConfig, fileNames.apiVersionSets);
-                resources.Add(this.CreateLinkedMasterTemplateResource("versionSetTemplate", apiVersionSetUri, new string[] { }));
+                resources.Add(this.CreateLinkedMasterTemplateResource("versionSetTemplate", apiVersionSetUri, new string[] { }, new string[] { }));
             }
 
             // product
             if (productsTemplate != null)
             {
                 string productsUri = GenerateLinkedTemplateUri(creatorConfig, fileNames.products);
-                resources.Add(this.CreateLinkedMasterTemplateResource("productsTemplate", productsUri, new string[] { }));
+                resources.Add(this.CreateLinkedMasterTemplateResource("productsTemplate", productsUri, new string[] { }, new string[] { }));
             }
 
             // property
             if (propertyTemplate != null)
             {
                 string propertyUri = GenerateLinkedTemplateUri(creatorConfig, fileNames.namedValues);
-                resources.Add(this.CreateLinkedMasterTemplateResource("propertyTemplate", propertyUri, new string[] { }));
+                resources.Add(this.CreateLinkedMasterTemplateResource("propertyTemplate", propertyUri, new string[] { }, creatorConfig.namedValues.Select(x => x.displayName).ToArray()));
             }
 
             // logger
             if (loggersTemplate != null)
             {
                 string loggersUri = GenerateLinkedTemplateUri(creatorConfig, fileNames.loggers);
-                resources.Add(this.CreateLinkedMasterTemplateResource("loggersTemplate", loggersUri, new string[] { }));
+                resources.Add(this.CreateLinkedMasterTemplateResource("loggersTemplate", loggersUri, new string[] { }, new string[] { }));
             }
 
             // backend
             if (backendsTemplate != null)
             {
                 string backendsUri = GenerateLinkedTemplateUri(creatorConfig, fileNames.backends);
-                resources.Add(this.CreateLinkedMasterTemplateResource("backendsTemplate", backendsUri, new string[] { }));
+                resources.Add(this.CreateLinkedMasterTemplateResource("backendsTemplate", backendsUri, new string[] { }, new string[] { }));
             }
 
             // authorizationServer
             if (authorizationServersTemplate != null)
             {
                 string authorizationServersUri = GenerateLinkedTemplateUri(creatorConfig, fileNames.authorizationServers);
-                resources.Add(this.CreateLinkedMasterTemplateResource("authorizationServersTemplate", authorizationServersUri, new string[] { }));
+                resources.Add(this.CreateLinkedMasterTemplateResource("authorizationServersTemplate", authorizationServersUri, new string[] { }, new string[] { }));
             }
 
             // tag
             if (tagTemplate != null) {
                 string tagUri = GenerateLinkedTemplateUri(creatorConfig, fileNames.tags);
-                resources.Add(this.CreateLinkedMasterTemplateResource("tagTemplate", tagUri, new string[] { }));
+                resources.Add(this.CreateLinkedMasterTemplateResource("tagTemplate", tagUri, new string[] { }, new string[] { }));
             }
 
             // each api has an associated api info class that determines whether the api is split and its dependencies on other resources
@@ -97,12 +99,12 @@ namespace Microsoft.Azure.Management.ApiManagement.ArmTemplates.Create
                     string initialAPIFileName = fileNameGenerator.GenerateCreatorAPIFileName(apiInfo.name, apiInfo.isSplit, true);
                     string initialAPIUri = GenerateLinkedTemplateUri(creatorConfig, initialAPIFileName);
                     string[] initialAPIDependsOn = CreateAPIResourceDependencies(globalServicePolicyTemplate, apiVersionSetTemplate, productsTemplate, loggersTemplate, backendsTemplate, authorizationServersTemplate, tagTemplate, apiInfo);
-                    resources.Add(this.CreateLinkedMasterTemplateResource(initialAPIDeploymentResourceName, initialAPIUri, initialAPIDependsOn));
+                    resources.Add(this.CreateLinkedMasterTemplateResource(initialAPIDeploymentResourceName, initialAPIUri, initialAPIDependsOn, new string[] { }));
 
                     string subsequentAPIFileName = fileNameGenerator.GenerateCreatorAPIFileName(apiInfo.name, apiInfo.isSplit, false);
                     string subsequentAPIUri = GenerateLinkedTemplateUri(creatorConfig, subsequentAPIFileName);
                     string[] subsequentAPIDependsOn = new string[] { $"[resourceId('Microsoft.Resources/deployments', '{initialAPIDeploymentResourceName}')]" };
-                    resources.Add(this.CreateLinkedMasterTemplateResource(subsequentAPIDeploymentResourceName, subsequentAPIUri, subsequentAPIDependsOn));
+                    resources.Add(this.CreateLinkedMasterTemplateResource(subsequentAPIDeploymentResourceName, subsequentAPIUri, subsequentAPIDependsOn, new string[] { }));
                 }
                 else
                 {
@@ -112,7 +114,7 @@ namespace Microsoft.Azure.Management.ApiManagement.ArmTemplates.Create
                     string unifiedAPIFileName = fileNameGenerator.GenerateCreatorAPIFileName(apiInfo.name, apiInfo.isSplit, true);
                     string unifiedAPIUri = GenerateLinkedTemplateUri(creatorConfig, unifiedAPIFileName);
                     string[] unifiedAPIDependsOn = CreateAPIResourceDependencies(globalServicePolicyTemplate, apiVersionSetTemplate, productsTemplate, loggersTemplate, backendsTemplate, authorizationServersTemplate, tagTemplate, apiInfo);
-                    resources.Add(this.CreateLinkedMasterTemplateResource(unifiedAPIDeploymentResourceName, unifiedAPIUri, unifiedAPIDependsOn));
+                    resources.Add(this.CreateLinkedMasterTemplateResource(unifiedAPIDeploymentResourceName, unifiedAPIUri, unifiedAPIDependsOn, new string[] { }));
                 }
             }
 
@@ -161,7 +163,7 @@ namespace Microsoft.Azure.Management.ApiManagement.ArmTemplates.Create
             return apiDependsOn.ToArray();
         }
 
-        public MasterTemplateResource CreateLinkedMasterTemplateResource(string name, string uriLink, string[] dependsOn)
+        public MasterTemplateResource CreateLinkedMasterTemplateResource(string name, string uriLink, string[] dependsOn, string[] addlParams)
         {
             // create deployment resource with provided arguments
             MasterTemplateResource masterTemplateResource = new MasterTemplateResource()
@@ -184,6 +186,13 @@ namespace Microsoft.Azure.Management.ApiManagement.ArmTemplates.Create
                 },
                 dependsOn = dependsOn
             };
+
+            // add additional params
+            foreach (var param in addlParams)
+            {
+                masterTemplateResource.properties.parameters.Add(param, new TemplateParameterProperties() { value = $"[parameters('{param}')]" });
+            }
+
             return masterTemplateResource;
         }
 
@@ -226,7 +235,23 @@ namespace Microsoft.Azure.Management.ApiManagement.ArmTemplates.Create
                     parameters.Add(ParameterNames.LinkedTemplatesUrlQueryString, linkedTemplatesUrlQueryStringProperties);
                 }
             }
-            return parameters;
+            // add named values as parameters
+            if (creatorConfig.namedValues.Count > 0)
+            {
+                foreach(PropertyConfig namedValue in creatorConfig.namedValues)
+                {
+                    TemplateParameterProperties namedValueProperties = new TemplateParameterProperties()
+                    {
+                        metadata = new TemplateParameterMetadata()
+                        {
+                            description = "A parameterized Named Value for the API"
+                        },
+                        type = "string"
+                    };
+                    parameters.Add(namedValue.displayName, namedValueProperties);
+                }
+            }
+                return parameters;
         }
 
         public Template CreateMasterTemplateParameterValues(CreatorConfig creatorConfig)
@@ -242,6 +267,10 @@ namespace Microsoft.Azure.Management.ApiManagement.ArmTemplates.Create
                 value = creatorConfig.apimServiceName
             };
             parameters.Add(ParameterNames.ApimServiceName, apimServiceNameProperties);
+            foreach (var namedValue in creatorConfig.namedValues)
+            {
+                parameters.Add(namedValue.displayName, new TemplateParameterProperties() { value = namedValue.value });
+            }
             if (creatorConfig.linked == true)
             {
                 TemplateParameterProperties linkedTemplatesBaseUrlProperties = new TemplateParameterProperties()

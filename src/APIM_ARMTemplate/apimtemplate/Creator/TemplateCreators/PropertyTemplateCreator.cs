@@ -16,6 +16,12 @@ namespace Microsoft.Azure.Management.ApiManagement.ArmTemplates.Create
                 { ParameterNames.ApimServiceName, new TemplateParameterProperties(){ type = "string" } }
             };
 
+            // add named value parameters
+            foreach (PropertyConfig namedValue in creatorConfig.namedValues)
+            {
+                propertyTemplate.parameters.Add(namedValue.displayName, new TemplateParameterProperties() { type = "string" });
+            }
+
             List<TemplateResource> resources = new List<TemplateResource>();
             foreach (PropertyConfig namedValue in creatorConfig.namedValues)
             {
@@ -28,7 +34,7 @@ namespace Microsoft.Azure.Management.ApiManagement.ArmTemplates.Create
                     properties = new PropertyResourceProperties()
                     {
                         displayName = namedValue.displayName,
-                        value = namedValue.value,
+                        value = $"[parameters('{namedValue.displayName}')]",
                         secret = namedValue.secret,
                         tags = namedValue.tags
                     },
